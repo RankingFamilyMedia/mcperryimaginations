@@ -76,6 +76,8 @@ flutter build appbundle --release
 The Play Store bundle will be created at
 `build\app\outputs\bundle\release\app-release.aab`.
 
+The release bundle must use a private upload keystore. This workspace now has a locally ignored `android\upload-keystore.jks` configured through `android\key.properties`; back up both the keystore and its passwords securely. Never commit either file. For another machine, copy `android\key.properties.example`, point `storeFile` to the private keystore, and use the same alias and passwords.
+
 ## Create the first administrator
 
 Register normally in the app. In Firebase Console > Firestore > `users` > your UID, change `role` from `seller` or `buyer` to `admin` and set `verified` to `true`. Client registration rules prevent users from assigning themselves the admin role.
