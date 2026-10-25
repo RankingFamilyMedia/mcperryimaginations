@@ -51,13 +51,13 @@ After signing in with an administrator account, the CMS provides listing moderat
 
 When the remote marketplace has no approved listings, the phone app displays five clearly marked demo vehicles (car, bicycle, electric bike, motorbike and commercial) so the store preview is usable. The first approved listing created through the CMS automatically replaces this fallback.
 
-The public launch website for this project is `https://rankingfamily.com`. Firebase Hosting still needs to be enabled and the domain connected in Firebase Hosting/DNS before the first public deployment. The Firebase project’s fallback site is normally `https://mcperry-market-place.web.app`.
+The existing Firebase Hosting site for this project is `https://autoyaad-ghana.web.app`; the Hosting target is configured as `autoyaad-ghana` so the next release deploys there. The intended custom public domain remains `https://rankingfamily.com`; connect it to this existing Hosting site in Firebase Hosting/DNS.
 
 ## AdMob and ads.txt
 
 The Android native ad unit is configured as `ca-app-pub-6208745110537063/4728323231`. Replace the test `ADMOB_APP_ID` value in the Android build configuration with the production AdMob App ID, which is a different value containing `~` rather than `/`.
 
-For a mobile app, AdMob verifies `app-ads.txt` at the root of the developer website. Both `web\app-ads.txt` and `web\ads.txt` are included with the publisher authorization line. After deployment, the verification URL will be `https://rankingfamily.com/app-ads.txt`; it becomes active only after that file is publicly reachable and `rankingfamily.com` is added to the AdMob app settings.
+For a mobile app, AdMob verifies `app-ads.txt` at the root of the developer website. Both `web\app-ads.txt` and `web\ads.txt` are included with the publisher authorization line. After deployment, the file will be available at `https://autoyaad-ghana.web.app/app-ads.txt`; after the custom domain is connected, the final verification URL will be `https://rankingfamily.com/app-ads.txt`. Add the final domain to the AdMob app settings.
 
 ## Photo uploads
 
