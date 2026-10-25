@@ -1,0 +1,58 @@
+[
+  {
+    "title": "2021 Toyota Corolla LE",
+    "category": "Car",
+    "make": "Toyota",
+    "model": "Corolla LE",
+    "year": 2021,
+    "price": 185000,
+    "location": "Accra, Greater Accra",
+    "transmission": "Automatic",
+    "fuel": "Petrol",
+    "condition": "Used",
+    "mileage": 54000,
+    "description": "Clean family saloon with service history and working air conditioning."
+  },
+  {
+    "title": "2020 Honda CR-V AWD",
+    "category": "Car",
+    "make": "Honda",
+    "model": "CR-V AWD",
+    "year": 2020,
+    "price": 265000,
+    "location": "Kumasi, Ashanti",
+    "transmission": "Automatic",
+    "fuel": "Petrol",
+    "condition": "Imported",
+    "mileage": 68000,
+    "description": "Spacious SUV suitable for family and business use."
+  },
+  {
+    "title": "2022 Yamaha MT-07",
+    "category": "Motorbike",
+    "make": "Yamaha",
+    "model": "MT-07",
+    "year": 2022,
+    "price": 92000,
+    "location": "Tema, Greater Accra",
+    "transmission": "Manual",
+    "fuel": "Petrol",
+    "condition": "Used",
+    "mileage": 12000,
+    "description": "Lightly used motorcycle with fresh tyres and service records."
+  },
+  {
+    "title": "2019 Mercedes-Benz Sprinter",
+    "category": "Commercial",
+    "make": "Mercedes-Benz",
+    "model": "Sprinter",
+    "year": 2019,
+    "price": 410000,
+    "location": "Takoradi, Western",
+    "transmission": "Manual",
+    "fuel": "Diesel",
+    "condition": "Used",
+    "mileage": 142000,
+    "description": "Commercial van with a practical cargo configuration."
+  }
+]

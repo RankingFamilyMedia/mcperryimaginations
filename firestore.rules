@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isAdmin() { return signedIn() && userDoc().data.role == 'admin'; }
+
+    match /users/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.role in ['buyer', 'seller']
+        && request.resource.data.verified == false
+        && request.resource.data.accountStatus == 'active';
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.verified == resource.data.verified
+        && request.resource.data.accountStatus == resource.data.accountStatus);
+      allow delete: if isAdmin();
+
+      match /savedVehicles/{vehicleId} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.vehicleId == vehicleId;
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if resource.data.status == 'approved' || (signedIn() && (resource.data.sellerId == request.auth.uid || isAdmin()));
+      allow create: if isAdmin() || (signedIn()
+        && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.featured == false
+        && request.resource.data.verified == false
+        && request.resource.data.managedSale == true);
+      allow update: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid
+        && request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.status == 'pending'
+        && request.resource.data.featured == resource.data.featured
+        && request.resource.data.verified == resource.data.verified
+        && request.resource.data.managedSale == resource.data.managedSale);
+      allow delete: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid && resource.data.status == 'pending');
+    }
+
+    match /offers/{offerId} {
+      allow create: if signedIn() && request.resource.data.buyerId == request.auth.uid && request.resource.data.status == 'pending';
+      allow read: if signedIn() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} { allow read, write: if isAdmin(); }
+  }
+}

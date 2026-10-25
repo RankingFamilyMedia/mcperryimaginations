@@ -1,0 +1,8 @@
+{
+  "indexes": [
+    {"collectionGroup":"vehicles","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
+    {"collectionGroup":"vehicles","queryScope":"COLLECTION","fields":[{"fieldPath":"sellerId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]},
+    {"collectionGroup":"offers","queryScope":"COLLECTION","fields":[{"fieldPath":"vehicleId","order":"ASCENDING"},{"fieldPath":"createdAt","order":"DESCENDING"}]}
+  ],
+  "fieldOverrides": []
+}

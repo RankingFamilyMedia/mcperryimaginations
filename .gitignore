@@ -1,0 +1,13 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+.tmp/
+.idea/
+*.iml
+android/.gradle/
+android/local.properties
+android/app/google-services.json
+*.jks
+key.properties
+.env
