@@ -3,6 +3,8 @@
 .flutter-plugins-dependencies
 build/
 .tmp/
+.firebase/
+firebase-debug.log
 .idea/
 *.iml
 android/.gradle/
