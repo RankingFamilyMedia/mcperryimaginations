@@ -13,6 +13,24 @@ import 'services.dart';
 
 final ghc = NumberFormat.currency(locale: 'en_GH', symbol: 'GH\u20B5 ');
 
+const autoGreen = Color(0xFF003C2F);
+const autoGold = Color(0xFFD4AF37);
+
+IconData vehicleIcon(String category) {
+  switch (category) {
+    case 'Bicycle':
+      return Icons.pedal_bike;
+    case 'Electric bike':
+      return Icons.electric_bike;
+    case 'Motorbike':
+      return Icons.two_wheeler;
+    case 'Commercial':
+      return Icons.local_shipping_outlined;
+    default:
+      return Icons.directions_car;
+  }
+}
+
 class SetupRequired extends StatelessWidget {
   const SetupRequired({super.key, required this.error});
   final String error;
@@ -143,14 +161,23 @@ class _MarketHomeState extends State<MarketHome> {
         return CustomScrollView(slivers: [
           SliverAppBar(
               floating: true,
-              title: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('AutoYaad Ghana',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('Trusted vehicles. Managed sales.',
-                        style: TextStyle(fontSize: 11))
-                  ]),
+              backgroundColor: autoGreen,
+              foregroundColor: Colors.white,
+              title: Row(children: [
+                Image.asset('assets/branding/autoyaad_icon.png',
+                    width: 34, height: 34),
+                const SizedBox(width: 9),
+                const Text.rich(TextSpan(children: [
+                  TextSpan(
+                      text: 'Auto',
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w800)),
+                  TextSpan(
+                      text: 'Yaad',
+                      style: TextStyle(
+                          color: autoGold, fontWeight: FontWeight.w800))
+                ]))
+              ]),
               actions: [
                 IconButton(
                     onPressed: () => showSearch(
@@ -165,13 +192,15 @@ class _MarketHomeState extends State<MarketHome> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
                             decoration: BoxDecoration(
                                 gradient: const LinearGradient(colors: [
-                                  Color(0xFF063C24),
-                                  Color(0xFF0B8B4A)
+                                  Color(0xFF003C2F),
+                                  Color(0xFF006B52)
                                 ]),
-                                borderRadius: BorderRadius.circular(22)),
+                                borderRadius: BorderRadius.circular(26),
+                                border: Border.all(
+                                    color: Color(0xFFD4AF37), width: .7)),
                             child: const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -181,8 +210,14 @@ class _MarketHomeState extends State<MarketHome> {
                                           fontSize: 25,
                                           fontWeight: FontWeight.bold)),
                                   SizedBox(height: 6),
+                                  Text('BUY  •  SELL  •  DRIVE  •  TRUST',
+                                      style: TextStyle(
+                                          color: Color(0xFFD4AF37),
+                                          fontSize: 11,
+                                          letterSpacing: 1.6)),
+                                  SizedBox(height: 10),
                                   Text(
-                                      'Cars, motorbikes and commercial vehicles reviewed by AutoYaad.',
+                                      'Cars, bikes and commercial vehicles reviewed by AutoYaad.',
                                       style: TextStyle(color: Colors.white70))
                                 ])),
                         const SizedBox(height: 16),
@@ -198,6 +233,8 @@ class _MarketHomeState extends State<MarketHome> {
                                 children: [
                               'All',
                               'Car',
+                              'Bicycle',
+                              'Electric bike',
                               'Motorbike',
                               'Commercial'
                             ]
@@ -207,15 +244,25 @@ class _MarketHomeState extends State<MarketHome> {
                                         child: ChoiceChip(
                                             label: Text(e),
                                             selected: category == e,
+                                            selectedColor: autoGold,
+                                            backgroundColor: Colors.white,
+                                            side: const BorderSide(
+                                                color: Color(0xFFCBD5D1)),
                                             onSelected: (_) =>
                                                 setState(() => category = e))))
                                     .toList())),
                         const SizedBox(height: 18),
-                        Text('Available vehicles',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(fontWeight: FontWeight.bold))
+                        Row(children: [
+                          Text('Featured listings',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          TextButton(
+                              onPressed: () => setState(() => category = 'All'),
+                              child: const Text('See all'))
+                        ])
                       ]))),
           const SliverToBoxAdapter(child: AdBanner()),
           if (snap.hasError)
@@ -329,8 +376,9 @@ class VehicleCard extends StatelessWidget {
                 child: Stack(fit: StackFit.expand, children: [
               vehicle.images.isEmpty
                   ? Container(
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.directions_car, size: 52))
+                      color: const Color(0xFFE8F0EC),
+                      child: Icon(vehicleIcon(vehicle.category),
+                          size: 52, color: autoGreen))
                   : CachedNetworkImage(
                       imageUrl: vehicle.images.first,
                       fit: BoxFit.cover,
@@ -362,8 +410,7 @@ class VehicleCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(ghc.format(vehicle.price),
                           style: const TextStyle(
-                              color: Color(0xFF0B6B3A),
-                              fontWeight: FontWeight.bold)),
+                              color: autoGreen, fontWeight: FontWeight.bold)),
                       Text('${vehicle.year} \u2022 ${vehicle.location}',
                           maxLines: 1,
                           style: Theme.of(context).textTheme.bodySmall)
@@ -1051,7 +1098,13 @@ class _VehicleFormState extends State<VehicleForm> {
               child: _drop(
                   'Category',
                   category,
-                  ['Car', 'Motorbike', 'Commercial'],
+                  [
+                    'Car',
+                    'Bicycle',
+                    'Electric bike',
+                    'Motorbike',
+                    'Commercial'
+                  ],
                   (v) => setState(() => category = v))),
           const SizedBox(width: 10),
           Expanded(

@@ -5,18 +5,147 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'models.dart';
 
+final demoVehicles = [
+  Vehicle(
+      id: 'demo-toyota-corolla',
+      sellerId: 'demo',
+      title: '2021 Toyota Corolla LE',
+      category: 'Car',
+      make: 'Toyota',
+      model: 'Corolla LE',
+      year: 2021,
+      price: 185000,
+      location: 'Accra, Greater Accra',
+      transmission: 'Automatic',
+      fuel: 'Petrol',
+      condition: 'Used',
+      mileage: 54000,
+      description:
+          'Demo listing: clean family saloon with service history and working air conditioning.',
+      phone: '+233 20 000 0000',
+      whatsapp: '+233 20 000 0000',
+      images: [],
+      status: 'approved',
+      featured: true,
+      verified: true,
+      managedSale: true,
+      createdAt: DateTime(2025, 1, 1)),
+  Vehicle(
+      id: 'demo-giant-escape',
+      sellerId: 'demo',
+      title: '2023 Giant Escape 3 Bicycle',
+      category: 'Bicycle',
+      make: 'Giant',
+      model: 'Escape 3',
+      year: 2023,
+      price: 8500,
+      location: 'Accra, Greater Accra',
+      transmission: 'Single-speed',
+      fuel: 'Human-powered',
+      condition: 'New',
+      mileage: 0,
+      description:
+          'Demo listing: lightweight city bicycle for commuting and leisure rides.',
+      phone: '+233 20 000 0000',
+      whatsapp: '+233 20 000 0000',
+      images: [],
+      status: 'approved',
+      featured: false,
+      verified: true,
+      managedSale: true,
+      createdAt: DateTime(2025, 1, 1, 1)),
+  Vehicle(
+      id: 'demo-fiido-electric-bike',
+      sellerId: 'demo',
+      title: '2023 Fiido M1 Pro Electric Bike',
+      category: 'Electric bike',
+      make: 'Fiido',
+      model: 'M1 Pro',
+      year: 2023,
+      price: 18500,
+      location: 'Kumasi, Ashanti',
+      transmission: 'Automatic assist',
+      fuel: 'Electric',
+      condition: 'New',
+      mileage: 120,
+      description:
+          'Demo listing: foldable electric bike with rechargeable battery assist.',
+      phone: '+233 24 000 0000',
+      whatsapp: '+233 24 000 0000',
+      images: [],
+      status: 'approved',
+      featured: false,
+      verified: true,
+      managedSale: true,
+      createdAt: DateTime(2025, 1, 1, 2)),
+  Vehicle(
+      id: 'demo-yamaha-mt07',
+      sellerId: 'demo',
+      title: '2022 Yamaha MT-07',
+      category: 'Motorbike',
+      make: 'Yamaha',
+      model: 'MT-07',
+      year: 2022,
+      price: 92000,
+      location: 'Kumasi, Ashanti',
+      transmission: 'Manual',
+      fuel: 'Petrol',
+      condition: 'Used',
+      mileage: 12000,
+      description:
+          'Demo listing: agile commuter bike with recent service and clean papers.',
+      phone: '+233 24 000 0000',
+      whatsapp: '+233 24 000 0000',
+      images: [],
+      status: 'approved',
+      featured: false,
+      verified: true,
+      managedSale: true,
+      createdAt: DateTime(2025, 1, 2)),
+  Vehicle(
+      id: 'demo-mercedes-sprinter',
+      sellerId: 'demo',
+      title: '2019 Mercedes-Benz Sprinter',
+      category: 'Commercial',
+      make: 'Mercedes-Benz',
+      model: 'Sprinter',
+      year: 2019,
+      price: 410000,
+      location: 'Tema, Greater Accra',
+      transmission: 'Automatic',
+      fuel: 'Diesel',
+      condition: 'Used',
+      mileage: 98000,
+      description:
+          'Demo listing: dependable commercial van for logistics and passenger service.',
+      phone: '+233 27 000 0000',
+      whatsapp: '+233 27 000 0000',
+      images: [],
+      status: 'approved',
+      featured: false,
+      verified: true,
+      managedSale: true,
+      createdAt: DateTime(2025, 1, 3))
+];
+
 class MarketplaceService {
   final db = FirebaseFirestore.instance;
   final auth = FirebaseAuth.instance;
-  Stream<List<Vehicle>> approvedVehicles() => db
+  Stream<List<Vehicle>> approvedVehicles() async* {
+    try {
+      await for (final snapshot in db
           .collection('vehicles')
           .where('status', isEqualTo: 'approved')
-          .snapshots()
-          .map((s) {
-        final list = s.docs.map(Vehicle.fromDoc).toList();
+          .snapshots()) {
+        final list = snapshot.docs.map(Vehicle.fromDoc).toList();
         list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        return list;
-      });
+        yield list.isEmpty ? demoVehicles : list;
+      }
+    } catch (_) {
+      yield demoVehicles;
+    }
+  }
+
   Stream<List<Vehicle>> adminVehicles() => db
       .collection('vehicles')
       .where('status',
@@ -129,6 +258,40 @@ class MarketplaceService {
         'condition': 'Imported',
         'mileage': 68000,
         'description': 'Spacious SUV suitable for family and business use.',
+        'phone': '+233 24 000 0000',
+        'whatsapp': '+233 24 000 0000'
+      },
+      {
+        'title': '2023 Giant Escape 3 Bicycle',
+        'category': 'Bicycle',
+        'make': 'Giant',
+        'model': 'Escape 3',
+        'year': 2023,
+        'price': 8500.0,
+        'location': 'Accra, Greater Accra',
+        'transmission': 'Single-speed',
+        'fuel': 'Human-powered',
+        'condition': 'New',
+        'mileage': 0,
+        'description':
+            'Lightweight city bicycle for commuting and leisure rides.',
+        'phone': '+233 20 000 0000',
+        'whatsapp': '+233 20 000 0000'
+      },
+      {
+        'title': '2023 Fiido M1 Pro Electric Bike',
+        'category': 'Electric bike',
+        'make': 'Fiido',
+        'model': 'M1 Pro',
+        'year': 2023,
+        'price': 18500.0,
+        'location': 'Kumasi, Ashanti',
+        'transmission': 'Automatic assist',
+        'fuel': 'Electric',
+        'condition': 'New',
+        'mileage': 120,
+        'description':
+            'Foldable electric bike with rechargeable battery assist.',
         'phone': '+233 24 000 0000',
         'whatsapp': '+233 24 000 0000'
       },

@@ -28,3 +28,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/autoyaad_icon.png
+    - assets/branding/autoyaad_splash.png

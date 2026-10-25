@@ -42,6 +42,34 @@
     "description": "Lightly used motorcycle with fresh tyres and service records."
   },
   {
+    "title": "2023 Giant Escape 3 Bicycle",
+    "category": "Bicycle",
+    "make": "Giant",
+    "model": "Escape 3",
+    "year": 2023,
+    "price": 8500,
+    "location": "Accra, Greater Accra",
+    "transmission": "Single-speed",
+    "fuel": "Human-powered",
+    "condition": "New",
+    "mileage": 0,
+    "description": "Lightweight city bicycle for commuting and leisure rides."
+  },
+  {
+    "title": "2023 Fiido M1 Pro Electric Bike",
+    "category": "Electric bike",
+    "make": "Fiido",
+    "model": "M1 Pro",
+    "year": 2023,
+    "price": 18500,
+    "location": "Kumasi, Ashanti",
+    "transmission": "Automatic assist",
+    "fuel": "Electric",
+    "condition": "New",
+    "mileage": 120,
+    "description": "Foldable electric bike with rechargeable battery assist."
+  },
+  {
     "title": "2019 Mercedes-Benz Sprinter",
     "category": "Commercial",
     "make": "Mercedes-Benz",

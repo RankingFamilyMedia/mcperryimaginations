@@ -82,18 +82,71 @@ class _StartupAppState extends State<StartupApp> {
                     : AutoYaadApp(service: MarketplaceService()));
           }
           return const MaterialApp(
-              debugShowCheckedModeBanner: false,
-              home: Scaffold(
-                  body: Center(
-                      child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Opening AutoYaad Ghana...')
-                ],
-              ))));
+              debugShowCheckedModeBanner: false, home: BrandSplash());
         },
+      );
+}
+
+class BrandSplash extends StatelessWidget {
+  const BrandSplash({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: const Color(0xFF003C2F),
+        body: Stack(fit: StackFit.expand, children: [
+          Image.asset('assets/branding/autoyaad_splash.png', fit: BoxFit.cover),
+          Container(
+              decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                Color(0xCC003C2F),
+                Color(0x66003C2F),
+                Color(0xEE001B20)
+              ]))),
+          SafeArea(
+              child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 48, 24, 28),
+                  child: Column(children: [
+                    const Spacer(),
+                    Image.asset('assets/branding/autoyaad_icon.png',
+                        width: 112, height: 112),
+                    const SizedBox(height: 18),
+                    RichText(
+                        text: const TextSpan(
+                            style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1),
+                            children: [
+                          TextSpan(
+                              text: 'Auto',
+                              style: TextStyle(color: Colors.white)),
+                          TextSpan(
+                              text: 'Yaad',
+                              style: TextStyle(color: Color(0xFFD4AF37)))
+                        ])),
+                    const SizedBox(height: 12),
+                    const Text('BUY  •  SELL  •  DRIVE  •  TRUST',
+                        style: TextStyle(
+                            color: Colors.white70,
+                            letterSpacing: 2.2,
+                            fontSize: 11)),
+                    const Spacer(),
+                    const Text('Your Trusted Automotive Marketplace',
+                        style: TextStyle(color: Colors.white, fontSize: 16)),
+                    const SizedBox(height: 18),
+                    const SizedBox(
+                        width: 80,
+                        child: LinearProgressIndicator(
+                            minHeight: 4,
+                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                            backgroundColor: Colors.white24,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFFD4AF37))))
+                  ])))
+        ]),
       );
 }
 
@@ -105,15 +158,40 @@ class AutoYaadApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'AutoYaad Ghana',
       theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B6B3A)),
-          scaffoldBackgroundColor: const Color(0xFFF5F7F6),
-          inputDecorationTheme: const InputDecorationTheme(
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(14)))),
-          cardTheme: const CardThemeData(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(18))))),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF003C2F))
+            .copyWith(
+                primary: const Color(0xFF003C2F),
+                secondary: const Color(0xFFD4AF37),
+                surface: const Color(0xFFF8F9FA)),
+        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF003C2F),
+            foregroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent),
+        inputDecorationTheme: const InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(18)),
+                borderSide: BorderSide(color: Color(0xFFCBD5D1))),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(18)),
+                borderSide: BorderSide(color: Color(0xFFCBD5D1))),
+            focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(18)),
+                borderSide: BorderSide(color: Color(0xFF003C2F), width: 2))),
+        cardTheme: const CardThemeData(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(18)))),
+        navigationBarTheme: const NavigationBarThemeData(
+            backgroundColor: Color(0xFF003C2F),
+            indicatorColor: Color(0xFFD4AF37),
+            labelTextStyle: WidgetStatePropertyAll(
+                TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            iconTheme:
+                WidgetStatePropertyAll(IconThemeData(color: Colors.white70))),
+      ),
       home: HomeShell(service: service));
 }
