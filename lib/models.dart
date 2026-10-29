@@ -111,7 +111,7 @@ class AppUser {
   final String uid, name, email, phone, role, accountStatus;
   final bool verified;
   bool get isAdmin => role == 'admin';
-  bool get isSeller => role == 'seller' || isAdmin;
+  bool get isSeller => role == 'seller' || role == 'partner' || isAdmin;
   factory AppUser.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final j = d.data() ?? {};
     return AppUser(

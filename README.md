@@ -6,9 +6,9 @@ A Flutter/Firebase managed marketplace for cars, motorbikes and commercial vehic
 
 - Visitor marketplace browsing and search
 - Persistent saved vehicles for visitors and signed-in users
-- Buyer and seller email registration
+- Buyer, seller and partner account workflow
 - Seller vehicle submission with up to ten images
-- Mandatory admin approval for seller listings
+- Mandatory CMS approval for partner and seller listings
 - Administrator vehicle posting with immediate approval
 - Cars, motorbikes and commercial vehicles
 - Vehicle specifications and image gallery
@@ -33,21 +33,39 @@ A Flutter/Firebase managed marketplace for cars, motorbikes and commercial vehic
 3. Install CLIs if needed: `npm install -g firebase-tools` and `dart pub global activate flutterfire_cli`.
 4. Run `firebase login` and `firebase use YOUR_PROJECT_ID`.
 5. Run `flutterfire configure` and select Android.
-6. Enable Email/Password Authentication, Cloud Firestore and Firebase Storage.
+6. Enable Email/Password Authentication and Cloud Firestore. Vehicle photos use the shared cPanel media service.
 7. Run `firebase deploy --only firestore:rules,firestore:indexes,storage`.
 8. In `functions`, run `npm install`, return to the root, and run `firebase deploy --only functions`.
 9. Run `flutter analyze`, `flutter test`, then `flutter run`.
 
 ## Desktop CMS
 
-The CMS is a Flutter web app that can be installed from Chrome or Edge as a desktop PWA. It uses the same Firebase project and administrator roles as the phone app.
+The CMS is the first publishing tool for AutoYaad. It is a Flutter web app that can be installed from Chrome or Edge as a desktop PWA. It uses the same Firebase project and administrator roles as the phone app.
 
 ```powershell
 flutter run -d chrome --dart-define=CMS_MODE=true
 flutter build web --release --dart-define=CMS_MODE=true
 ```
 
-After signing in with an administrator account, the CMS provides listing moderation, users, offers, reports, transactions and sample-vehicle controls. The generated `build\web` folder can be deployed to Firebase Hosting or another HTTPS host.
+After signing in with an administrator account, choose **Admin post** to publish a car with up to ten photos. Partner submissions arrive as **pending** and cannot appear publicly until the CMS approves them. The Vehicles tab supports search, status filtering, approval/rejection, featured and verified flags, reservation, and **Mark sold** with the agreed price and handoff location. The CMS also provides users, offers, reports, transactions and sample-vehicle controls. The generated `build\web` folder can be deployed to Firebase Hosting or another HTTPS host.
+
+### Windows desktop build
+
+The CMS can also be built as a native Windows desktop application:
+
+```powershell
+flutter build windows --release --dart-define=CMS_MODE=true
+```
+
+The executable and its required support files are created in `build\windows\x64\runner\Release`. Run `autoyaad_cms.exe` from that folder; keep the entire folder together when copying it to another computer.
+
+The private administrator phone APK is a separate Android application from the marketplace and future Publisher app:
+
+```powershell
+flutter build apk --release --dart-define=CMS_MODE=true -PcmsMode=true
+```
+
+This produces an APK with the `com.mcperryimaginations.autoyaad.cms` application ID and the **AutoYaad CMS** app name, so it can be installed alongside the public AutoYaad app. Only administrator accounts can enter the CMS dashboard; partner submissions remain pending until approved there.
 
 When the remote marketplace has no approved listings, the phone app displays five clearly marked demo vehicles (car, bicycle, electric bike, motorbike and commercial) so the store preview is usable. The first approved listing created through the CMS automatically replaces this fallback.
 
@@ -61,7 +79,14 @@ For a mobile app, AdMob verifies `app-ads.txt` at the root of the developer webs
 
 ## Photo uploads
 
-The recovered phone build calls the Firebase Function `createR2UploadUrl` for photo uploads. The local Functions source still needs the Cloudflare R2 signing implementation and its private environment configuration before production photo uploads are enabled. Do not put R2 credentials in Flutter or in this repository.
+CMS and marketplace photo uploads use the shared cPanel media service at
+`https://rankingfamily.com/media-api/upload.php`. AutoYaad images are stored in
+the `autoyaad/{userId}/` namespace under the shared media root, while Firebase
+Firestore continues to store vehicle records and image URLs. Future apps can use
+the same endpoint with their own app ID and upload token. The upload endpoint
+validates JPG, PNG and WebP files below 8 MB and never exposes cPanel credentials
+to the app. The Cloud Functions deployment remains responsible for the
+server-side managed-sale ledger.
 
 ## Build the Android release
 
@@ -70,13 +95,30 @@ After Firebase setup and successful testing, run:
 ```powershell
 flutter clean
 flutter pub get
-flutter build appbundle --release
+flutter build appbundle --release --dart-define=CMS_MODE=true -PcmsMode=true
 ```
 
 The Play Store bundle will be created at
 `build\app\outputs\bundle\release\app-release.aab`.
 
 The release bundle must use a private upload keystore. This workspace now has a locally ignored `android\upload-keystore.jks` configured through `android\key.properties`; back up both the keystore and its passwords securely. Never commit either file. For another machine, copy `android\key.properties.example`, point `storeFile` to the private keystore, and use the same alias and passwords.
+
+## Build iOS with Codemagic
+
+The iOS project and root `codemagic.yaml` are prepared for the public AutoYaad
+app using bundle ID `com.mcperryimaginations.autoyaadGhana`. In Codemagic,
+connect the repository and create:
+
+- An App Store Connect Developer Portal integration named
+  `autoyaad-app-store-connect`.
+- A secret environment group named `autoyaad-secrets` containing
+  `CPANEL_UPLOAD_TOKEN` (the server upload token must not be committed).
+
+The workflow uses iOS AdMob App ID
+`ca-app-pub-6208745110537063~7710839095` and Native Ad unit
+`ca-app-pub-6208745110537063/2099419766`. The second iOS ad unit is not used
+until a matching placement is added to the app. Increase the iOS build number
+in `codemagic.yaml` for every later App Store Connect upload.
 
 ## Create the first administrator
 

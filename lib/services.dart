@@ -1,9 +1,16 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 import 'models.dart';
+
+const cpanelUploadEndpoint = 'https://rankingfamily.com/media-api/upload.php';
+const cpanelUploadAppId = 'autoyaad';
+const cpanelUploadToken =
+    String.fromEnvironment('CPANEL_UPLOAD_TOKEN');
 
 final demoVehicles = [
   Vehicle(
@@ -181,11 +188,17 @@ class MarketplaceService {
       .where('sellerId', isEqualTo: uid)
       .snapshots()
       .map((s) => s.docs.map(Vehicle.fromDoc).toList());
-  Stream<AppUser?> profile(String uid) => db
-      .collection('users')
-      .doc(uid)
-      .snapshots()
-      .map((d) => d.exists ? AppUser.fromDoc(d) : null);
+  Stream<AppUser?> profile(String uid) async* {
+    // The CMS only needs the profile to authorize the current session. A
+    // one-time read avoids hanging on a Firestore listen stream when a
+    // desktop proxy or browser wrapper buffers WebChannel traffic.
+    final d = await db
+        .collection('users')
+        .doc(uid)
+        .get()
+        .timeout(const Duration(seconds: 20));
+    yield d.exists ? AppUser.fromDoc(d) : null;
+  }
   Stream<List<String>> savedVehicleIds(String uid) => db
       .collection('users')
       .doc(uid)
@@ -389,7 +402,8 @@ class MarketplaceService {
 
   Future<void> updateUser(String uid,
       {String? role, bool? verified, String? accountStatus}) async {
-    if (role != null && !['buyer', 'seller', 'admin'].contains(role)) {
+    if (role != null &&
+        !['buyer', 'seller', 'partner', 'admin'].contains(role)) {
       throw ArgumentError('Choose a valid account role.');
     }
     if (accountStatus != null &&
@@ -404,39 +418,66 @@ class MarketplaceService {
     });
   }
 
-  Future<List<String>> uploadImages(List<XFile> files, String owner) async {
+  Future<List<String>> uploadImages(List<XFile> files, String owner,
+      {void Function(int current, int total)? onProgress}) async {
+    if (cpanelUploadToken.isEmpty) {
+      throw StateError(
+          'Image upload is not configured for this build. Add CPANEL_UPLOAD_TOKEN to the build secrets.');
+    }
     final urls = <String>[];
-    final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
-    for (final file in files) {
-      final bytes = await file.readAsBytes();
+    for (var index = 0; index < files.length; index++) {
+      onProgress?.call(index + 1, files.length);
+      final file = files[index];
+      final bytes = await file.readAsBytes().timeout(
+          const Duration(seconds: 20),
+          onTimeout: () => throw TimeoutException(
+              'Reading photo ${index + 1} timed out. Try selecting it again.'));
       if (bytes.length >= 8 * 1024 * 1024) {
         throw ArgumentError('Each photo must be smaller than 8 MB.');
       }
-      final contentType = file.mimeType ?? 'image/jpeg';
-      final signedUpload = await functions
-          .httpsCallable('createR2UploadUrl')
-          .call<Map<String, dynamic>>({
-        'contentType': contentType,
-        'sizeBytes': bytes.length,
-      });
-      final uploadUrl = Uri.parse(signedUpload.data['uploadUrl'] as String);
-      final response = await http.put(
-        uploadUrl,
-        headers: {'Content-Type': contentType},
-        body: bytes,
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw StateError('Photo upload failed (${response.statusCode}).');
+      final safeName = file.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final request = http.MultipartRequest(
+          'POST', Uri.parse(cpanelUploadEndpoint))
+        ..headers['X-App-Id'] = cpanelUploadAppId
+        ..headers['X-App-Upload-Token'] = cpanelUploadToken
+        ..fields['owner'] = owner
+        ..files.add(
+            http.MultipartFile.fromBytes('file', bytes, filename: safeName));
+      final response = await http.Response.fromStream(await request.send().timeout(
+              const Duration(seconds: 75),
+              onTimeout: () => throw TimeoutException(
+                  'Photo ${index + 1} upload timed out. Check your internet connection.')))
+          .timeout(const Duration(seconds: 20),
+              onTimeout: () => throw TimeoutException(
+                  'The image server did not finish responding.'));
+      dynamic payload;
+      try {
+        payload = jsonDecode(response.body);
+      } catch (_) {
+        throw StateError(
+            'Image server returned an invalid response (HTTP ${response.statusCode}).');
       }
-      urls.add(signedUpload.data['publicUrl'] as String);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final message = payload is Map && payload['error'] is String
+            ? payload['error'] as String
+            : 'Image server rejected the upload.';
+        throw StateError('$message (HTTP ${response.statusCode})');
+      }
+      if (payload is! Map || payload['url'] is! String) {
+        throw StateError('Image server did not return an image URL.');
+      }
+      urls.add(payload['url'] as String);
     }
     return urls;
   }
 
   Future<void> createVehicle(Map<String, dynamic> data, List<XFile> images,
-      {required bool admin}) async {
+      {required bool admin,
+      void Function(int current, int total)? onUploadProgress,
+      void Function(String status)? onStatus}) async {
     final uid = auth.currentUser!.uid;
-    final urls = await uploadImages(images, uid);
+    final urls = await uploadImages(images, uid, onProgress: onUploadProgress);
+    onStatus?.call('Saving listing...');
     await db.collection('vehicles').add({
       ...data,
       'sellerId': uid,

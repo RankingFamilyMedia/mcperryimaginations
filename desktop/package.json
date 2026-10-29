@@ -1,0 +1,44 @@
+{
+  "name": "autoyaad-cms-desktop",
+  "version": "1.0.0",
+  "description": "AutoYaad CMS desktop publishing app",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.mcperryimaginations.autoyaad.cms",
+    "productName": "AutoYaad CMS",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../build/web",
+        "to": "cms_web"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "AutoYaad-CMS-Setup-${version}.${ext}",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
+  }
+}

@@ -4,6 +4,9 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
     function isAdmin() { return signedIn() && userDoc().data.role == 'admin'; }
+    function canPublish() {
+      return signedIn() && userDoc().data.role in ['seller', 'partner', 'admin'];
+    }
 
     match /users/{uid} {
       allow create: if signedIn() && request.auth.uid == uid
@@ -27,19 +30,19 @@ service cloud.firestore {
 
     match /vehicles/{vehicleId} {
       allow read: if resource.data.status == 'approved' || (signedIn() && (resource.data.sellerId == request.auth.uid || isAdmin()));
-      allow create: if isAdmin() || (signedIn()
+      allow create: if isAdmin() || (canPublish()
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.featured == false
         && request.resource.data.verified == false
         && request.resource.data.managedSale == true);
-      allow update: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid
+      allow update: if isAdmin() || (canPublish() && resource.data.sellerId == request.auth.uid
         && request.resource.data.sellerId == resource.data.sellerId
         && request.resource.data.status == 'pending'
         && request.resource.data.featured == resource.data.featured
         && request.resource.data.verified == resource.data.verified
         && request.resource.data.managedSale == resource.data.managedSale);
-      allow delete: if isAdmin() || (signedIn() && resource.data.sellerId == request.auth.uid && resource.data.status == 'pending');
+      allow delete: if isAdmin() || (canPublish() && resource.data.sellerId == request.auth.uid && resource.data.status == 'pending');
     }
 
     match /offers/{offerId} {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import 'ads_consent.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'models.dart';
 import 'services.dart';
@@ -315,7 +318,7 @@ class _AdBannerState extends State<AdBanner> {
           ? const String.fromEnvironment('ADMOB_IOS_NATIVE_ID',
               defaultValue: 'ca-app-pub-3940256099942544/3986624511')
           : const String.fromEnvironment('ADMOB_ANDROID_NATIVE_ID',
-              defaultValue: 'ca-app-pub-6208745110537063/4728323231');
+              defaultValue: 'ca-app-pub-3940256099942544/2247696110');
       ad = NativeAd(
           adUnitId: unitId,
           request: const AdRequest(),
@@ -329,8 +332,11 @@ class _AdBannerState extends State<AdBanner> {
               callToActionTextStyle: NativeTemplateTextStyle(
                   textColor: Colors.white, backgroundColor: Color(0xFF0B6B3A))),
           listener: NativeAdListener(onAdLoaded: (_) {
+            debugPrint('AdMob native ad loaded.');
             if (mounted) setState(() => loaded = true);
-          }, onAdFailedToLoad: (failedAd, _) {
+          }, onAdFailedToLoad: (failedAd, error) {
+            debugPrint(
+                'AdMob native ad failed: ${error.code} ${error.message}');
             failedAd.dispose();
             if (mounted) setState(() => ad = null);
           }))
@@ -356,17 +362,79 @@ class _AdBannerState extends State<AdBanner> {
   }
 }
 
-class VehicleCard extends StatelessWidget {
+class VehicleCard extends StatefulWidget {
   const VehicleCard({super.key, required this.vehicle, required this.service});
   final Vehicle vehicle;
   final MarketplaceService service;
+
+  @override
+  State<VehicleCard> createState() => _VehicleCardState();
+}
+
+class _VehicleCardState extends State<VehicleCard> {
+  late PageController _pageController;
+  Timer? _carouselTimer;
+  int _currentImage = 0;
+
+  Vehicle get vehicle => widget.vehicle;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _startCarousel();
+  }
+
+  @override
+  void didUpdateWidget(covariant VehicleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vehicle.id != widget.vehicle.id ||
+        oldWidget.vehicle.images.length != widget.vehicle.images.length ||
+        oldWidget.vehicle.featured != widget.vehicle.featured) {
+      _currentImage = 0;
+      _pageController.dispose();
+      _pageController = PageController();
+      _startCarousel();
+    }
+  }
+
+  void _startCarousel() {
+    _carouselTimer?.cancel();
+    // Cards in the Featured listings section should rotate whenever they have
+    // more than one photo. The moderation `featured` flag still controls the
+    // badge, but should not disable the visual carousel.
+    if (vehicle.images.length < 2) return;
+    _carouselTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_pageController.hasClients || !mounted) return;
+      final next = (_currentImage + 1) % vehicle.images.length;
+      _pageController.animateToPage(next,
+          duration: const Duration(milliseconds: 750),
+          curve: Curves.easeInOutCubic);
+    });
+  }
+
+  void _moveImage(int direction) {
+    if (vehicle.images.length < 2 || !_pageController.hasClients) return;
+    final next = (_currentImage + direction) % vehicle.images.length;
+    final target = next < 0 ? vehicle.images.length - 1 : next;
+    _pageController.animateToPage(target,
+        duration: const Duration(milliseconds: 450), curve: Curves.easeOut);
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => InkWell(
       onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
               builder: (_) =>
-                  VehicleDetail(vehicle: vehicle, service: service))),
+                  VehicleDetail(vehicle: vehicle, service: widget.service))),
       borderRadius: BorderRadius.circular(18),
       child: Card(
           clipBehavior: Clip.antiAlias,
@@ -379,11 +447,17 @@ class VehicleCard extends StatelessWidget {
                       color: const Color(0xFFE8F0EC),
                       child: Icon(vehicleIcon(vehicle.category),
                           size: 52, color: autoGreen))
-                  : CachedNetworkImage(
-                      imageUrl: vehicle.images.first,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) =>
-                          const Icon(Icons.broken_image)),
+                  : PageView.builder(
+                      controller: _pageController,
+                      itemCount: vehicle.images.length,
+                      onPageChanged: (page) {
+                        if (mounted) setState(() => _currentImage = page);
+                      },
+                      itemBuilder: (_, page) => CachedNetworkImage(
+                          imageUrl: vehicle.images[page],
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) =>
+                              const Icon(Icons.broken_image))),
               if (vehicle.featured)
                 const Positioned(
                     top: 8,
@@ -391,6 +465,40 @@ class VehicleCard extends StatelessWidget {
                     child: Chip(
                         label: Text('FEATURED'),
                         visualDensity: VisualDensity.compact)),
+              if (vehicle.images.length > 1) ...[
+                Positioned(
+                    left: 4,
+                    top: 0,
+                    bottom: 0,
+                    child: _carouselButton(
+                        icon: Icons.chevron_left,
+                        onPressed: () => _moveImage(-1))),
+                Positioned(
+                    right: 4,
+                    top: 0,
+                    bottom: 0,
+                    child: _carouselButton(
+                        icon: Icons.chevron_right,
+                        onPressed: () => _moveImage(1))),
+                Positioned(
+                    bottom: 7,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                        child: DecoratedBox(
+                            decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(12)),
+                            child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                child: Text(
+                                    '${_currentImage + 1}/${vehicle.images.length}',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600))))))
+              ],
               if (vehicle.verified)
                 const Positioned(
                     top: 8,
@@ -416,6 +524,19 @@ class VehicleCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodySmall)
                     ]))
           ])));
+
+  Widget _carouselButton(
+          {required IconData icon, required VoidCallback onPressed}) =>
+      Center(
+          child: Material(
+              color: Colors.black45,
+              shape: const CircleBorder(),
+              child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: onPressed,
+                  child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(icon, color: Colors.white, size: 22)))));
 }
 
 class VehicleDetail extends StatelessWidget {
@@ -1057,8 +1178,134 @@ class _VehicleFormState extends State<VehicleForm> {
       condition = 'Used';
   final images = <XFile>[];
   bool busy = false;
+  String uploadStatus = '';
+  SharedPreferences? _draftPrefs;
+  Timer? _draftTimer;
+  bool _draftReady = false;
+
+  String get _draftPrefix =>
+      'autoyaad.cms.vehicle-draft.${widget.service.auth.currentUser?.uid ?? 'unknown'}';
+
+  List<TextEditingController> get _draftControllers => [
+        title,
+        make,
+        model,
+        year,
+        price,
+        location,
+        mileage,
+        description,
+        phone,
+        whatsapp
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in _draftControllers) {
+      controller.addListener(_queueDraftSave);
+    }
+    _loadDraft();
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    _draftPrefs = prefs;
+    final prefix = _draftPrefix;
+    final saved = <TextEditingController, String>{
+      title: prefs.getString('$prefix.title') ?? '',
+      make: prefs.getString('$prefix.make') ?? '',
+      model: prefs.getString('$prefix.model') ?? '',
+      year: prefs.getString('$prefix.year') ?? '',
+      price: prefs.getString('$prefix.price') ?? '',
+      location: prefs.getString('$prefix.location') ?? '',
+      mileage: prefs.getString('$prefix.mileage') ?? '',
+      description: prefs.getString('$prefix.description') ?? '',
+      phone: prefs.getString('$prefix.phone') ?? '',
+      whatsapp: prefs.getString('$prefix.whatsapp') ?? ''
+    };
+    for (final entry in saved.entries) {
+      if (entry.value.isNotEmpty) entry.key.text = entry.value;
+    }
+    final savedCategory = prefs.getString('$prefix.category');
+    final savedTransmission = prefs.getString('$prefix.transmission');
+    final savedFuel = prefs.getString('$prefix.fuel');
+    final savedCondition = prefs.getString('$prefix.condition');
+    if (['Car', 'Bicycle', 'Electric bike', 'Motorbike', 'Commercial']
+        .contains(savedCategory)) {
+      category = savedCategory!;
+    }
+    if (['Automatic', 'Manual'].contains(savedTransmission)) {
+      transmission = savedTransmission!;
+    }
+    if (['Petrol', 'Diesel', 'Electric', 'Hybrid'].contains(savedFuel)) {
+      fuel = savedFuel!;
+    }
+    if (['New', 'Used', 'Imported'].contains(savedCondition)) {
+      condition = savedCondition!;
+    }
+    _draftReady = true;
+    setState(() {});
+  }
+
+  void _queueDraftSave() {
+    if (!_draftReady || _draftPrefs == null) return;
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 400), _saveDraft);
+  }
+
+  Future<void> _saveDraft() async {
+    final prefs = _draftPrefs;
+    if (prefs == null) return;
+    final prefix = _draftPrefix;
+    await Future.wait([
+      prefs.setString('$prefix.title', title.text),
+      prefs.setString('$prefix.make', make.text),
+      prefs.setString('$prefix.model', model.text),
+      prefs.setString('$prefix.year', year.text),
+      prefs.setString('$prefix.price', price.text),
+      prefs.setString('$prefix.location', location.text),
+      prefs.setString('$prefix.mileage', mileage.text),
+      prefs.setString('$prefix.description', description.text),
+      prefs.setString('$prefix.phone', phone.text),
+      prefs.setString('$prefix.whatsapp', whatsapp.text),
+      prefs.setString('$prefix.category', category),
+      prefs.setString('$prefix.transmission', transmission),
+      prefs.setString('$prefix.fuel', fuel),
+      prefs.setString('$prefix.condition', condition)
+    ]);
+  }
+
+  Future<void> _clearDraft() async {
+    _draftTimer?.cancel();
+    final prefs = _draftPrefs;
+    if (prefs == null) return;
+    final prefix = _draftPrefix;
+    await Future.wait([
+      prefs.remove('$prefix.title'),
+      prefs.remove('$prefix.make'),
+      prefs.remove('$prefix.model'),
+      prefs.remove('$prefix.year'),
+      prefs.remove('$prefix.price'),
+      prefs.remove('$prefix.location'),
+      prefs.remove('$prefix.mileage'),
+      prefs.remove('$prefix.description'),
+      prefs.remove('$prefix.phone'),
+      prefs.remove('$prefix.whatsapp'),
+      prefs.remove('$prefix.category'),
+      prefs.remove('$prefix.transmission'),
+      prefs.remove('$prefix.fuel'),
+      prefs.remove('$prefix.condition')
+    ]);
+  }
+
   @override
   void dispose() {
+    _draftTimer?.cancel();
+    for (final controller in _draftControllers) {
+      controller.removeListener(_queueDraftSave);
+    }
     for (final controller in [
       title,
       make,
@@ -1092,6 +1339,10 @@ class _VehicleFormState extends State<VehicleForm> {
         TextField(
             controller: title,
             decoration: const InputDecoration(labelText: 'Vehicle title')),
+        if (_draftReady)
+          const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('Draft saved on this device while you work.')),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(
@@ -1129,7 +1380,9 @@ class _VehicleFormState extends State<VehicleForm> {
         TextField(
             controller: price,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Price (GH\u20B5)')),
+            decoration: const InputDecoration(
+                labelText: 'Price (GH\u20B5)',
+                helperText: 'Example: 150000 or 150,000')),
         const SizedBox(height: 10),
         TextField(
             controller: location,
@@ -1160,7 +1413,9 @@ class _VehicleFormState extends State<VehicleForm> {
               child: TextField(
                   controller: mileage,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Mileage (km)')))
+                  decoration: const InputDecoration(
+                      labelText: 'Mileage (km)',
+                      helperText: 'Example: 120000 or 120,000')))
         ]),
         const SizedBox(height: 10),
         TextField(
@@ -1206,7 +1461,7 @@ class _VehicleFormState extends State<VehicleForm> {
             onPressed: busy ? null : _save,
             icon: const Icon(Icons.publish),
             label: Text(busy
-                ? 'Uploading...'
+                ? uploadStatus
                 : widget.isAdmin
                     ? 'Publish now'
                     : 'Submit for approval'))
@@ -1219,7 +1474,10 @@ class _VehicleFormState extends State<VehicleForm> {
           items: options
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
-          onChanged: (v) => changed(v!));
+          onChanged: (v) {
+            changed(v!);
+            _queueDraftSave();
+          });
   Future<void> _pick() async {
     final picked = await ImagePicker().pickMultiImage(imageQuality: 82);
     if (mounted && picked.isNotEmpty) {
@@ -1230,27 +1488,58 @@ class _VehicleFormState extends State<VehicleForm> {
     }
   }
 
+  double? _parsePrice(String value) =>
+      double.tryParse(value.trim().replaceAll(RegExp(r'[\s,]'), ''));
+
+  int? _parseMileage(String value) {
+    final cleaned = value.trim().replaceAll(RegExp(r'[\s,]'), '');
+    return cleaned.isEmpty ? 0 : int.tryParse(cleaned);
+  }
+
+  String? _validationError() {
+    final titleValue = title.text.trim();
+    final p = _parsePrice(price.text);
+    final y = int.tryParse(year.text.trim());
+    final km = _parseMileage(mileage.text);
+
+    if (titleValue.isEmpty) return 'Enter a vehicle title.';
+    if (titleValue.length > 200) {
+      return 'Vehicle title must be 200 characters or fewer.';
+    }
+    if (y == null) return 'Enter a valid vehicle year.';
+    if (y < 1900 || y > DateTime.now().year + 1) {
+      return 'Enter a year between 1900 and ${DateTime.now().year + 1}.';
+    }
+    if (p == null || !p.isFinite) {
+      return 'Enter a valid price, for example 150000 or 150,000.';
+    }
+    if (p <= 0) return 'Price must be greater than zero.';
+    if (p > 1e9) return 'Price is too large.';
+    if (km == null) {
+      return 'Enter mileage as a whole number, for example 120000.';
+    }
+    if (km < 0) return 'Mileage cannot be negative.';
+    if (images.isEmpty) return 'Select at least one vehicle photo.';
+    return null;
+  }
+
   Future<void> _save() async {
-    final p = double.tryParse(price.text), y = int.tryParse(year.text);
-    final km = mileage.text.trim().isEmpty ? 0 : int.tryParse(mileage.text);
-    if (title.text.trim().isEmpty ||
-        title.text.trim().length > 200 ||
-        p == null ||
-        !p.isFinite ||
-        p <= 0 ||
-        p > 1e9 ||
-        y == null ||
-        y < 1900 ||
-        y > DateTime.now().year + 1 ||
-        km == null ||
-        km < 0 ||
-        images.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text(
-              'Add a title, valid year, positive price, non-negative mileage and at least one photo.')));
+    final validationError = _validationError();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(validationError)));
       return;
     }
-    setState(() => busy = true);
+    final p = _parsePrice(price.text)!;
+    final y = int.parse(year.text.trim());
+    final km = _parseMileage(mileage.text)!;
+    setState(() {
+      busy = true;
+      uploadStatus = images.length == 1
+          ? 'Uploading photo...'
+          : 'Uploading photo 1 of ${images.length}...';
+    });
     try {
       await widget.service.createVehicle({
         'title': title.text.trim(),
@@ -1267,15 +1556,31 @@ class _VehicleFormState extends State<VehicleForm> {
         'description': description.text.trim(),
         'phone': phone.text.trim(),
         'whatsapp': whatsapp.text.trim()
-      }, images, admin: widget.isAdmin);
+      }, images, admin: widget.isAdmin, onUploadProgress: (current, total) {
+        if (mounted) {
+          setState(
+              () => uploadStatus = 'Uploading photo $current of $total...');
+        }
+      }, onStatus: (status) {
+        if (mounted) setState(() => uploadStatus = status);
+      });
+      await _clearDraft();
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        final detail = e is FirebaseException
+            ? '${e.code}${e.message == null ? '' : ': ${e.message}'}'
+            : e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not publish this listing. $detail')));
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() {
+          busy = false;
+          uploadStatus = '';
+        });
+      }
     }
   }
 }
@@ -1564,7 +1869,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         title: const Text('Role'),
                         trailing: DropdownButton<String>(
                             value: user.role,
-                            items: const ['buyer', 'seller', 'admin']
+                            items: const ['buyer', 'seller', 'partner', 'admin']
                                 .map((role) => DropdownMenuItem(
                                     value: role, child: Text(role)))
                                 .toList(),
@@ -1572,7 +1877,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 ? null
                                 : (role) => _updateUser(user.uid, role: role))),
                     SwitchListTile(
-                        title: const Text('Verified seller'),
+                        title: const Text('Verified publisher'),
                         value: user.verified,
                         onChanged: (value) =>
                             _updateUser(user.uid, verified: value)),
@@ -1605,7 +1910,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       DataCell(Text(user.email)),
                       DataCell(DropdownButton<String>(
                           value: user.role,
-                          items: const ['buyer', 'seller', 'admin']
+                          items: const ['buyer', 'seller', 'partner', 'admin']
                               .map((role) => DropdownMenuItem(
                                   value: role, child: Text(role)))
                               .toList(),
@@ -1680,6 +1985,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Expanded(
               child: ListView(padding: const EdgeInsets.all(16), children: [
             Card(
+                color: const Color(0xFFE7F1EE),
+                child: ListTile(
+                    leading: const Icon(Icons.publish_outlined),
+                    title: const Text('Publishing workflow'),
+                    subtitle: const Text(
+                        'Use Admin post to publish a car immediately. When it sells, open the listing and choose Mark sold to record the agreed price and handoff location.'))),
+            const SizedBox(height: 12),
+            Card(
                 color: const Color(0xFFE8F5E9),
                 child: ListTile(
                     leading: const Icon(Icons.percent),
@@ -1721,7 +2034,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   context: context,
                                   builder: (_) => OfflineSaleDialog(
                                       service: service, vehicle: v)),
-                              child: const Text('Confirm sold')),
+                              child: const Text('Mark sold')),
                         FilterChip(
                             label: const Text('Featured'),
                             selected: v.featured,

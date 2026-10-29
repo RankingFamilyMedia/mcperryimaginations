@@ -2,6 +2,8 @@
 .flutter-plugins
 .flutter-plugins-dependencies
 build/
+desktop/node_modules/
+desktop/dist/
 .tmp/
 .firebase/
 firebase-debug.log
@@ -13,3 +15,4 @@ android/app/google-services.json
 *.jks
 key.properties
 .env
+deployment/cpanel/*-config.php

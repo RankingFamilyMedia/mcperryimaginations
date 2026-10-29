@@ -14,7 +14,8 @@ import 'ui.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   const cmsMode = bool.fromEnvironment('CMS_MODE', defaultValue: false);
-  runApp(const StartupApp(cmsMode: cmsMode));
+  const partnerMode = bool.fromEnvironment('PARTNER_MODE', defaultValue: false);
+  runApp(const StartupApp(cmsMode: cmsMode, partnerMode: partnerMode));
 }
 
 Future<void> initializeFirebase() async {
@@ -43,6 +44,13 @@ Future<void> initializeFirebase() async {
     await Firebase.initializeApp(
             options: DefaultFirebaseOptions.currentPlatform)
         .timeout(const Duration(seconds: 20));
+    if (kIsWeb) {
+      // Some desktop wrappers, proxies and antivirus filters buffer the
+      // Firestore WebChannel indefinitely. Long-polling keeps the CMS able
+      // to receive the first profile snapshot in those environments.
+      FirebaseFirestore.instance.settings = const Settings(
+          webExperimentalForceLongPolling: true, persistenceEnabled: false);
+    }
   }
   if (!kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -56,10 +64,12 @@ class StartupApp extends StatefulWidget {
       {super.key,
       this.initialize = initializeFirebase,
       this.ready,
-      this.cmsMode = false});
+      this.cmsMode = false,
+      this.partnerMode = false});
   final Future<void> Function() initialize;
   final Widget? ready;
   final bool cmsMode;
+  final bool partnerMode;
   @override
   State<StartupApp> createState() => _StartupAppState();
 }
@@ -77,9 +87,11 @@ class _StartupAppState extends State<StartupApp> {
           }
           if (snapshot.connectionState == ConnectionState.done) {
             return widget.ready ??
-                (widget.cmsMode
-                    ? CmsApp(service: MarketplaceService())
-                    : AutoYaadApp(service: MarketplaceService()));
+                (widget.partnerMode
+                    ? PartnerApp(service: MarketplaceService())
+                    : widget.cmsMode
+                        ? CmsApp(service: MarketplaceService())
+                        : AutoYaadApp(service: MarketplaceService()));
           }
           return const MaterialApp(
               debugShowCheckedModeBanner: false, home: BrandSplash());

@@ -6,7 +6,7 @@ AutoYaad Ghana is a managed vehicle marketplace operated by McPerry Imaginations
 
 Public listings display vehicle information and general location, but should not display a seller's exact residential address. Information may be shared with service providers used for authentication, hosting, storage, notifications and payments. Identity, ownership and inspection records must only be collected after the operator establishes appropriate consent, security and retention procedures.
 
-Users may request correction or deletion of eligible account information. Transaction and fraud-prevention records may be retained where required for legal, accounting or dispute purposes.
+Users may request correction or deletion of eligible account information through the account deletion page at `https://autoyaad-ghana.web.app/account-deletion.html`. Transaction and fraud-prevention records may be retained where required for legal, accounting or dispute purposes.
 
 Contact: **mcperryimaginations@gmail.com**
 

@@ -1,0 +1,38 @@
+workflows:
+  ios-release:
+    name: AutoYaad Ghana iOS release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    integrations:
+      # Create this integration in Codemagic Team settings and replace the value
+      # with the exact name you give your App Store Connect API key.
+      app_store_connect: autoyaad-app-store-connect
+
+    environment:
+      flutter: stable
+      groups:
+        - autoyaad-secrets
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mcperryimaginations.autoyaadGhana
+
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Apply iOS signing profiles
+        script: xcode-project use-profiles
+
+      - name: Build signed iOS IPA
+        script: |
+          flutter build ipa --release \
+            --build-name=1.1.1 \
+            --build-number=5 \
+            --dart-define=CPANEL_UPLOAD_TOKEN=$CPANEL_UPLOAD_TOKEN \
+            --dart-define=ADMOB_IOS_NATIVE_ID=ca-app-pub-6208745110537063/2099419766
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
+      - /tmp/xcodebuild_logs/*.log
