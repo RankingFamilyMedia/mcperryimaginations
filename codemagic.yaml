@@ -28,7 +28,7 @@ workflows:
         script: |
           flutter build ipa --release \
             --build-name=1.1.1 \
-            --build-number=5 \
+            --build-number=6 \
             --dart-define=CPANEL_UPLOAD_TOKEN=$CPANEL_UPLOAD_TOKEN \
             --dart-define=ADMOB_IOS_NATIVE_ID=ca-app-pub-6208745110537063/2099419766
 
