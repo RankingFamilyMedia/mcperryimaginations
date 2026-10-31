@@ -1,5 +1,5 @@
 platform :ios, '13.0'
-use_modular_headers!
+use_frameworks! :linkage => :static
 
 # CocoaPods analytics sends network stats synchronously, which can slow builds.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
