@@ -29,6 +29,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  config:
+    enable-swift-package-manager: false
   assets:
     - assets/branding/autoyaad_icon.png
     - assets/branding/autoyaad_splash.png
