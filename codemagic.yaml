@@ -5,8 +5,6 @@ workflows:
     instance_type: mac_mini_m2
 
     integrations:
-      # Create this integration in Codemagic Team settings and replace the value
-      # with the exact name you give your App Store Connect API key.
       app_store_connect: autoyaad-app-store-connect
 
     environment:
@@ -26,17 +24,33 @@ workflows:
 
       - name: Build signed iOS IPA
         script: |
+          set -euo pipefail
+
           flutter build ipa --release \
             --build-name=1.1.1 \
-            --build-number=6 \
-            --dart-define=CPANEL_UPLOAD_TOKEN=$CPANEL_UPLOAD_TOKEN \
+            --build-number="$((BUILD_NUMBER + 100))" \
+            --export-options-plist=/Users/builder/export_options.plist \
+            --dart-define="CPANEL_UPLOAD_TOKEN=$CPANEL_UPLOAD_TOKEN" \
             --dart-define=ADMOB_IOS_NATIVE_ID=ca-app-pub-6208745110537063/2099419766
+
+      - name: Confirm IPA exists
+        script: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob
+          files = glob.glob("build/ios/ipa/*.ipa")
+          if not files:
+              raise SystemExit("No IPA exported. Check the build log.")
+          for path in files:
+              print("IPA ready:", path)
+          PY
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/ios/archive/*.xcarchive
       - /tmp/xcodebuild_logs/*.log
 
     publishing:
       app_store_connect:
         auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
